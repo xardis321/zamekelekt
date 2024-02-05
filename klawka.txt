@@ -1,0 +1,203 @@
+#include <SPI.h>
+#include <MFRC522.h>
+#include <Keypad.h> //biblioteka od klawiatury
+ #include <LiquidCrystal.h>
+ #include <Servo.h>
+
+#define SS_PIN 48
+#define RST_PIN 49
+MFRC522 mfrc522(SS_PIN, RST_PIN);
+Servo myservo;
+ int b=0;
+int s=0;
+const byte ROWS = 4; // ile wierszy
+const byte COLS = 4; //ile kolumn
+ const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
+byte rowPins[ROWS] = {26, 27, 28, 29}; //piny wierszy
+byte colPins[COLS] = {25, 24, 23, 22}; //piny kolum
+ 
+char keys[ROWS][COLS] = { //mapowanie klawiatury
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+};
+ 
+Keypad customKeypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS ); //inicjalizacja klawiatury
+ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+int cursorColumn = 0;
+
+#define Password_Lenght 7
+char Data[Password_Lenght]; // 6 is the number of chars it can hold + the null char = 7
+
+char Master[Password_Lenght] = "123456";
+int pos = 0; 
+byte data_count = 0, master_count = 0;
+bool Pass_is_good;
+bool door = true;
+char customKey;
+int jakas=0;
+
+
+void setup(){
+  myservo.attach(13);
+
+  ServoClose();
+ Serial.begin(9600);  
+  lcd.begin(16, 2);
+  SPI.begin();      
+  mfrc522.PCD_Init();
+
+  lcd.print(" Projekt zamek");
+
+  lcd.setCursor(0, 1);
+
+  lcd.print(":)");
+
+  delay(3000);
+
+  lcd.clear();
+}
+void loop()
+
+{
+
+  if (door == 0)
+
+  {
+
+    customKey = customKeypad.getKey();
+
+    if (customKey == '#')
+
+    {
+
+      lcd.clear();
+
+      ServoClose();
+
+      lcd.print(" Zamek zamkniety");
+
+      delay(3000);
+      lcd.clear();
+
+      door = 1;
+
+    }
+
+  }
+
+  else Open();
+
+}
+
+void clearData()
+
+{
+
+  while (data_count != 0)
+
+  {
+
+    Data[data_count--] = 0; //clear array for new data
+
+  }
+
+  return;
+
+}
+
+void ServoOpen()
+
+{
+
+  for (pos = 180; pos >= 0; pos -= 5) { // goes from 0 degrees to 180 degrees
+
+    // in steps of 1 degree
+
+    myservo.write(pos);              // tell servo to go to position in variable 'pos'
+
+    delay(15);                       // waits 15ms for the servo to reach the position
+
+  }
+
+}
+
+void ServoClose()
+
+{
+
+  for (pos = 0; pos <= 180; pos += 5) { // goes from 180 degrees to 0 degrees
+
+    myservo.write(pos);              // tell servo to go to position in variable 'pos'
+
+    delay(15);                       // waits 15ms for the servo to reach the position
+
+  }
+
+}
+
+void Open()
+{
+  lcd.setCursor(0, 0);
+  lcd.print("Podaj h/k");
+  Serial.println("bla");
+
+  customKey = customKeypad.getKey();
+
+  if (customKey)// makes sure a key is actually pressed, equal to (customKey != NO_KEY)
+  {
+
+   switch(customKey){
+    case 'B':
+    for(int i=0;i<=jakas;i++)
+     Data[data_count--] = 0;
+     
+    break;
+    default:
+    jakas++;
+    Data[data_count] = customKey; // store char into data array
+
+    lcd.setCursor(data_count, 1); // move cursor to show each new char
+
+    lcd.print(Data[data_count]); // print char at said cursor
+
+    data_count++; // increment data array by 1 to store new char, also keep track of the number of chars entered
+    break;
+   }
+  }
+  
+  
+
+  if (data_count == Password_Lenght - 1) // if the array index is equal to the number of expected chars, compare data to master
+
+  {
+
+    if (!strcmp(Data, Master)) // equal to (strcmp(Data, Master) == 0)
+
+    {
+
+      lcd.clear();
+
+      ServoOpen();
+
+      lcd.print(" Zamek otwarty");
+
+      door = 0;
+
+    }
+else{
+      lcd.clear();
+
+      lcd.print(" Zle haslo");
+
+      delay(1000);
+
+      door = 1;
+lcd.clear();
+    }
+
+    clearData();
+
+  }
+  }
